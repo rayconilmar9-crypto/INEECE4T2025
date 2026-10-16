@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Informe ECE 4T2025 – Bolivia</title>
+<script src="papaparse.min.js"></script>
+<script>window.Papa||document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"><\/script>')</script>
+<script>window.Papa||document.write('<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"><\/script>')</script>
+<script>window.Papa||document.write('<script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"><\/script>')</script>
+<script src="plotly.min.js"></script>
+<script>window.Plotly||document.write('<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"><\/script>')</script>
+<script>window.Plotly||document.write('<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"><\/script>')</script>
+<script>window.Plotly||document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.35.2/plotly.min.js"><\/script>')</script>
+<style>
+:root{--bg:#fafaf8;--fg:#1d1d1b;--mut:#666;--card:#fff;--line:#ddd;--acc:#1f5fa8}
+@media(prefers-color-scheme:dark){:root{--bg:#161616;--fg:#eee;--mut:#aaa;--card:#202020;--line:#383838;--acc:#6fa8e8}}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 system-ui,sans-serif}
+main{max-width:1150px;margin:auto;padding:16px}
+h1{margin:.2em 0}h2{margin-top:2em;border-bottom:2px solid var(--acc);padding-bottom:4px}h4{margin:0 0 4px}
+#drop{border:3px dashed var(--acc);border-radius:12px;padding:36px;text-align:center;cursor:pointer;background:var(--card)}
+#drop.over{background:rgba(31,95,168,.12)}#drop small{color:var(--mut)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px}
+.ch{height:320px}.note{font-size:13px;color:var(--mut);margin:4px 0 0}
+table{border-collapse:collapse;font-size:13px;margin:8px 0;display:block;overflow-x:auto}
+td,th{border:1px solid var(--line);padding:3px 8px;text-align:right}th{background:var(--card)}td:first-child,th:first-child{text-align:left}
+.kpis{display:flex;gap:10px;flex-wrap:wrap}.kpi{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 14px}
+.kpi b{display:block;font-size:20px;color:var(--acc)}
+.test{background:var(--card);border-left:4px solid var(--acc);padding:8px 14px;margin:10px 0}
+.warn{background:rgba(220,160,0,.14);padding:8px 12px;border-radius:6px}
+#err{color:#c33;font-weight:600}nav a{margin-right:12px}
+</style></head><body><main>
+<h1>Encuesta Continua de Empleo (ECE) – 4.º trimestre 2025, Bolivia</h1>
+<p>Informe interactivo. Arrastra el archivo <code>df_ece.csv</code> y todo (gráficos, pruebas estadísticas e interpretación) se calcula en tu navegador, sin Python ni servidor.</p>
+<div id="drop"><b>Arrastra aquí el CSV</b> o haz clic para elegirlo<br><small>Se lee con PapaParse y se grafica con Plotly.js (requiere internet para cargar ambas librerías desde cdnjs)</small>
+<input type="file" id="file" accept=".csv" hidden></div><p id="err"></p>
+
+<div id="rep" hidden>
+<nav><a href="#s1">1. Fuente</a><a href="#s2">2. Variables</a><a href="#s3">3. Descriptivos</a><a href="#s4">4. Distribuciones</a><a href="#s5">5. Ingreso por grupos</a><a href="#s6">6. Relaciones</a><a href="#s7">7. Pruebas</a><a href="#s8">8. Límites</a></nav>
+
+<h2 id="s1">1. Fuente y alcance de los datos</h2>
+<p>Los datos provienen de la <b>Encuesta Continua de Empleo (ECE) del Instituto Nacional de Estadística (INE) de Bolivia</b>, trimestre IV de 2025 (archivo <code>ECE_4T2025.xlsx</code>, microdatos disponibles en el catálogo ANDA del INE). La unidad de análisis son los miembros de hogares en viviendas particulares. La encuesta mide condición de actividad, ocupación, actividad económica, subutilización de la mano de obra e ingresos.</p>
+<p>El script <code>generar_csv.py</code> leyó el Excel (52.650 personas, 121 variables), decodificó las categorías con el diccionario del INE y conservó solo la <b>población en edad de trabajar (PET, 14 años o más)</b>. El resultado es el CSV que cargaste.</p>
+<div class="kpis" id="kpis"></div>
+
+<h2 id="s2">2. Variables: de dónde salen y qué significan</h2>
+<table><tr><th>Columna del CSV</th><th>Variable INE</th><th>Significado</th></tr>
+<tr><td>departamento</td><td>depto</td><td>Departamento de residencia (9 categorías)</td></tr>
+<tr><td>area</td><td>area</td><td>Urbana o Rural</td></tr>
+<tr><td>sexo</td><td>s1_02</td><td>Hombre / Mujer</td></tr>
+<tr><td>edad</td><td>s1_03a</td><td>Edad en años cumplidos</td></tr>
+<tr><td>anios_estudio</td><td>aestudio</td><td>Años de estudio aprobados (0 a 22)</td></tr>
+<tr><td>nivel_educativo</td><td>niv_ed</td><td>Mayor nivel cursado: Ninguno, Primaria (inc./comp.), Secundaria (inc./comp.), Superior, Otros</td></tr>
+<tr><td>condicion_actividad</td><td>condact</td><td>Ocupado, Desocupado o Inactivo</td></tr>
+<tr><td>grupo_ocupacional</td><td>cob_op</td><td>Tipo de trabajo del empleo principal (clasificación de ocupaciones, 0–9)</td></tr>
+<tr><td>actividad</td><td>caeb_op</td><td>Rama de actividad económica del empleo principal (CAEB, secciones A–U)</td></tr>
+<tr><td>subocupacion</td><td>psubocup</td><td>Ocupado que trabaja menos horas de las deseadas y está disponible para trabajar más</td></tr>
+<tr><td>tipo_hogar</td><td>tipohogar</td><td>Tipología del hogar (códigos 1–7; las etiquetas textuales deben contrastarse con el diccionario INE)</td></tr>
+<tr><td>horas_trabajo_total</td><td>tothrs</td><td>Horas semanales trabajadas en todas las ocupaciones</td></tr>
+<tr><td>ingreso_laboral</td><td>ylab</td><td>Ingreso laboral mensual en bolivianos (Bs)</td></tr>
+<tr><td>ingreso_oc_principal</td><td>yprilab</td><td>Ingreso mensual de la ocupación principal (Bs)</td></tr>
+<tr><td>factor_expansion</td><td>fact_trim_act</td><td>Ponderador del INE. <b>No se usa aquí</b>: los resultados describen la muestra, no la población total</td></tr></table>
+
+<h2 id="s3">3. Estadística descriptiva</h2>
+<p>Resume cada variable cuantitativa: n, media, desviación estándar, mínimo, cuartiles y máximo. Cuando la media supera claramente a la mediana, la distribución tiene cola a la derecha (pocas personas con valores muy altos).</p>
+<div id="quant"></div><div id="qnote" class="note"></div>
+<p>Variables categóricas (frecuencia y porcentaje):</p><div id="cat"></div>
+<h4>Composición por sexo dentro de cada área (%)</h4><div id="sexarea"></div>
+
+<h2 id="s4">4. Distribuciones</h2>
+<p>Barras para categorías; histogramas para variables numéricas. Los gráficos de ocupación, actividad, subocupación e ingreso usan solo personas ocupadas.</p>
+<div class="grid" id="g4"></div>
+
+<h2 id="s5">5. Ingreso laboral por grupos</h2>
+<p>Los diagramas de caja muestran mediana (línea central), cuartiles (caja) y valores extremos; las barras comparan media y mediana. La mediana es la medida más fiable por el fuerte sesgo del ingreso.</p>
+<div class="grid" id="g5"></div>
+
+<h2 id="s6">6. Relaciones entre variables</h2>
+<p>Plotly no tiene hexbin nativo; se usa un mapa de densidad 2D (<code>histogram2d</code>) que cumple la misma función: mostrar dónde se concentran los puntos.</p>
+<div class="grid" id="g6"></div>
+<div id="corrnote" class="note"></div>
+
+<h2 id="s7">7. Pruebas de hipótesis</h2>
+<p>Nivel de significancia α = 0,05. Un valor p menor que α indica que la diferencia o relación observada difícilmente se debe al azar; no mide su tamaño, por eso se reporta también un tamaño del efecto.</p>
+<div id="tests"></div>
+
+<h2 id="s8">8. Límites de la lectura</h2>
+<div class="warn"><ul>
+<li>Los cálculos son <b>sin ponderar</b>: describen a las personas encuestadas, no se extrapolan a toda Bolivia (para eso habría que usar <code>factor_expansion</code>).</li>
+<li>El ingreso está muy sesgado y la ANOVA y la prueba t asumen normalidad aproximada; con muestras grandes son robustas, pero conviene confirmar con pruebas no paramétricas.</li>
+<li>Con muestras grandes casi cualquier diferencia sale "significativa": interpreta siempre el tamaño del efecto.</li>
+<li>Correlación no implica causalidad; la relación educación–ingreso también refleja edad, área y tipo de empleo.</li>
+<li>Las etiquetas de <i>tipo de hogar</i> son códigos del INE y no se interpretan sustantivamente.</li></ul></div>
+</div></main>
+<script>
+const S=id=>document.getElementById(id),num=v=>typeof v==='number'&&isFinite(v);
+const fm=(x,d=0)=>Number(x).toLocaleString('es-BO',{maximumFractionDigits:d}),pf=p=>p<0.001?'< 0,001':p.toFixed(3).replace('.',',');
+const REQ=['departamento','area','sexo','edad','anios_estudio','nivel_educativo','condicion_actividad','grupo_ocupacional','actividad','subocupacion','tipo_hogar','horas_trabajo_total','ingreso_laboral','ingreso_oc_principal'];
+let cnt=0;
+/* ---------- matemática ---------- */
+function gl(x){const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,.1208650973866179e-2,-.5395239384953e-5];let y=x,t=x+5.5;t-=(x+.5)*Math.log(t);let s=1.000000000190015;for(const v of c)s+=v/++y;return -t+Math.log(2.5066282746310005*s/x)}
+function bcf(a,b,x){const qab=a+b,qap=a+1,qam=a-1,T=1e-30;let c=1,d=1-qab*x/qap;if(Math.abs(d)<T)d=T;d=1/d;let h=d;for(let m=1;m<=300;m++){const m2=2*m;let aa=m*(b-m)*x/((qam+m2)*(a+m2));d=1+aa*d;if(Math.abs(d)<T)d=T;c=1+aa/c;if(Math.abs(c)<T)c=T;d=1/d;h*=d*c;aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2));d=1+aa*d;if(Math.abs(d)<T)d=T;c=1+aa/c;if(Math.abs(c)<T)c=T;d=1/d;const e=d*c;h*=e;if(Math.abs(e-1)<3e-12)break}return h}
+function ib(x,a,b){if(x<=0)return 0;if(x>=1)return 1;const bt=Math.exp(gl(a+b)-gl(a)-gl(b)+a*Math.log(x)+b*Math.log(1-x));return x<(a+1)/(a+b+2)?bt*bcf(a,b,x)/a:1-bt*bcf(b,a,1-x)/b}
+function gq(a,x){if(x<=0)return 1;const T=1e-30;if(x<a+1){let ap=a,s=1/a,d=s;for(let n=0;n<500;n++){ap++;d*=x/ap;s+=d;if(Math.abs(d)<Math.abs(s)*1e-12)break}return 1-s*Math.exp(-x+a*Math.log(x)-gl(a))}let b=x+1-a,c=1/T,d=1/b,h=d;for(let i=1;i<500;i++){const an=-i*(i-a);b+=2;d=an*d+b;if(Math.abs(d)<T)d=T;c=b+an/c;if(Math.abs(c)<T)c=T;d=1/d;const e=d*c;h*=e;if(Math.abs(e-1)<1e-12)break}return Math.exp(-x+a*Math.log(x)-gl(a))*h}
+const mean=a=>a.reduce((s,v)=>s+v,0)/a.length,vari=a=>{const m=mean(a);return a.reduce((s,v)=>s+(v-m)**2,0)/(a.length-1)};
+const q=(s,p)=>{const i=(s.length-1)*p,l=Math.floor(i);return s[l]+(s[Math.min(l+1,s.length-1)]-s[l])*(i-l)};
+const med=a=>q([...a].sort((x,y)=>x-y),.5);
+function skew(a){const m=mean(a),s=Math.sqrt(vari(a)),n=a.length;return a.reduce((t,v)=>t+((v-m)/s)**3,0)*n/((n-1)*(n-2))}
+function pearson(x,y){const p=[];x.forEach((v,i)=>{if(num(v)&&num(y[i]))p.push([v,y[i]])});const n=p.length,mx=mean(p.map(a=>a[0])),my=mean(p.map(a=>a[1]));let sxy=0,sxx=0,syy=0;p.forEach(([a,b])=>{sxy+=(a-mx)*(b-my);sxx+=(a-mx)**2;syy+=(b-my)**2});const r=sxy/Math.sqrt(sxx*syy),t=r*Math.sqrt((n-2)/(1-r*r));return{r,n,p:ib((n-2)/(n-2+t*t),(n-2)/2,.5)}}
+const strength=r=>{r=Math.abs(r);return r<.1?'despreciable':r<.3?'débil':r<.5?'moderada':'fuerte'};
+const eff=(d)=>{d=Math.abs(d);return d<.2?'muy pequeño':d<.5?'pequeño':d<.8?'mediano':'grande'};
+/* ---------- gráficos ---------- */
+function card(sec,title,note){const id='c'+(++cnt);S(sec).insertAdjacentHTML('beforeend',`<div class="card"><h4>${title}</h4><div id="${id}" class="ch"></div><p class="note">${note||''}</p></div>`);return id}
+function P(id,tr,lay){Plotly.newPlot(id,tr,Object.assign({margin:{t:10,l:55,r:10,b:70},paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{size:11,color:getComputedStyle(document.body).color}},lay||{}),{responsive:true,displaylogo:false})}
+const COL='#1f5fa8';
+function groups(rows,k,v){const m={};rows.forEach(r=>{if(r[k]!=null&&r[k]!==''&&num(r[v]))(m[r[k]]=m[r[k]]||[]).push(r[v])});return m}
+function counts(rows,k){const m={};rows.forEach(r=>{if(r[k]!=null&&r[k]!=='')m[r[k]]=(m[r[k]]||0)+1});return m}
+function bar(sec,title,rows,k,order){const c=counts(rows,k),n=Object.values(c).reduce((a,b)=>a+b,0);let ks=order?order.filter(x=>x in c):Object.keys(c).sort((a,b)=>c[b]-c[a]);const top=Object.keys(c).sort((a,b)=>c[b]-c[a]);
+ const id=card(sec,title,`Más frecuente: <b>${top[0]}</b> (${fm(100*c[top[0]]/n,1)}%); menos frecuente: ${top[top.length-1]} (${fm(100*c[top[top.length-1]]/n,1)}%). n = ${fm(n)}.`);
+ P(id,[{type:'bar',x:ks,y:ks.map(x=>c[x]),marker:{color:COL}}],{xaxis:{tickangle:-35}})}
+function hist(sec,title,vals,unit){const m=mean(vals),md=med(vals),g=skew(vals);
+ const id=card(sec,title,`Media ${fm(m,1)}, mediana ${fm(md,1)} ${unit}. Asimetría ${fm(g,2)}: ${g>1?'fuerte cola a la derecha (pocos valores muy altos)':g>.3?'ligera cola a la derecha':g<-.3?'cola a la izquierda':'distribución aproximadamente simétrica'}. n = ${fm(vals.length)}.`);
+ P(id,[{type:'histogram',x:vals,marker:{color:COL}}],{yaxis:{title:'Frecuencia'},xaxis:{title:unit}})}
+function rank(gs){const k=Object.keys(gs).filter(x=>gs[x].length>=5).sort((a,b)=>med(gs[b])-med(gs[a]));return k}
+function sumNote(gs,k,what){const hi=k[0],lo=k[k.length-1];return `Mediana más alta: <b>${hi}</b> (Bs ${fm(med(gs[hi]))}); más baja: <b>${lo}</b> (Bs ${fm(med(gs[lo]))}), es decir ${fm(med(gs[hi])/med(gs[lo]),1)} veces más. ${what||''}`}
+function box(sec,title,rows,k,v){const gs=groups(rows,k,v),ks=rank(gs);const id=card(sec,title,sumNote(gs,ks));
+ P(id,ks.map(x=>({type:'box',y:gs[x],name:x,boxpoints:false,showlegend:false})),{yaxis:{title:'Bs/mes',type:'log'},xaxis:{tickangle:-35}})}
+function mm(sec,title,rows,k,v,order){const gs=groups(rows,k,v);let ks=order?order.filter(x=>x in gs):rank(gs);const allG=ks.every(x=>mean(gs[x])>med(gs[x]));const kk=rank(gs);
+ const id=card(sec,title,sumNote(gs,kk,allG?'En todos los grupos la media supera a la mediana: hay pocos ingresos muy altos que elevan el promedio.':''));
+ P(id,[{type:'bar',name:'Media',x:ks,y:ks.map(x=>mean(gs[x])),marker:{color:'#8fb4dd'}},{type:'bar',name:'Mediana',x:ks,y:ks.map(x=>med(gs[x])),marker:{color:COL}}],{barmode:'group',yaxis:{title:'Bs/mes'},xaxis:{tickangle:-35},legend:{orientation:'h',y:1.12}})}
+function dens(sec,title,rows,xk,yk,xl){const p=rows.filter(r=>num(r[xk])&&num(r[yk])&&r[yk]>0),c=pearson(p.map(r=>r[xk]),p.map(r=>r[yk]));
+ const id=card(sec,title,`Correlación de Pearson r = ${fm(c.r,2)} (${strength(c.r)}, ${c.r>0?'positiva':'negativa'}). Las zonas oscuras concentran más personas. n = ${fm(c.n)}.`);
+ P(id,[{type:'histogram2d',x:p.map(r=>r[xk]),y:p.map(r=>r[yk]),nbinsx:30,nbinsy:30,colorscale:'Blues',colorbar:{title:'n'}}],{xaxis:{title:xl},yaxis:{title:'Ingreso laboral (Bs)'}})}
+function table(head,rows){return `<table><tr>${head.map(h=>`<th>${h}</th>`).join('')}</tr>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</table>`}
+/* ---------- pruebas ---------- */
+function welch(a,b){const m1=mean(a),m2=mean(b),v1=vari(a),v2=vari(b),n1=a.length,n2=b.length,se=v1/n1+v2/n2,t=(m1-m2)/Math.sqrt(se),df=se*se/((v1/n1)**2/(n1-1)+(v2/n2)**2/(n2-1)),sp=Math.sqrt(((n1-1)*v1+(n2-1)*v2)/(n1+n2-2));return{t,df,p:ib(df/(df+t*t),df/2,.5),m1,m2,d:(m1-m2)/sp}}
+function anova(gs){const ks=Object.keys(gs).filter(k=>gs[k].length>1),all=ks.flatMap(k=>gs[k]),N=all.length,gm=mean(all);let sb=0,sw=0;ks.forEach(k=>{const m=mean(gs[k]);sb+=gs[k].length*(m-gm)**2;sw+=gs[k].reduce((s,v)=>s+(v-m)**2,0)});const d1=ks.length-1,d2=N-ks.length,F=(sb/d1)/(sw/d2);return{F,d1,d2,p:ib(d2/(d2+d1*F),d2/2,d1/2),eta:sb/(sb+sw)}}
+function chi(rows,a,b){const t={};rows.forEach(r=>{if(r[a]&&r[b]){(t[r[a]]=t[r[a]]||{});t[r[a]][r[b]]=(t[r[a]][r[b]]||0)+1}});const A=Object.keys(t),B=[...new Set(A.flatMap(x=>Object.keys(t[x])))],tot=A.reduce((s,x)=>s+B.reduce((u,y)=>u+(t[x][y]||0),0),0),ra=A.map(x=>B.reduce((u,y)=>u+(t[x][y]||0),0)),cb=B.map(y=>A.reduce((u,x)=>u+(t[x][y]||0),0));let c2=0;A.forEach((x,i)=>B.forEach((y,j)=>{const e=ra[i]*cb[j]/tot;c2+=((t[x][y]||0)-e)**2/e}));const df=(A.length-1)*(B.length-1);return{c2,df,p:gq(df/2,c2/2),V:Math.sqrt(c2/(tot*Math.min(A.length-1,B.length-1))),A,B,t,tot}}
+const sig=p=>p<.05?'<b>es estadísticamente significativa</b> (p &lt; 0,05): se rechaza la hipótesis nula':'<b>no es significativa</b> (p ≥ 0,05): no hay evidencia para rechazar la hipótesis nula';
+/* ---------- construcción ---------- */
+function build(D){
+ ['g4','g5','g6','kpis','quant','cat','sexarea','tests'].forEach(i=>S(i).innerHTML='');cnt=0;
+ const OC=D.filter(r=>r.condicion_actividad==='Ocupado'),Y=OC.filter(r=>num(r.ingreso_laboral)&&r.ingreso_laboral>0);
+ const bin=e=>e<25?'14–24':e<35?'25–34':e<45?'35–44':e<55?'45–54':e<65?'55–64':'65+';D.forEach(r=>r.tramo_edad=num(r.edad)?bin(r.edad):null);Y.forEach(r=>r.tramo_edad=num(r.edad)?bin(r.edad):null);
+ const NIV=['Ninguno','Primaria incompleta','Primaria completa','Secundaria incompleta','Secundaria completa','Superior','Otros'],TR=['14–24','25–34','35–44','45–54','55–64','65+'];
+ S('kpis').innerHTML=[['Personas (PET)',fm(D.length)],['Ocupados',fm(OC.length)],['Con ingreso laboral',fm(Y.length)],['Mediana de ingreso',`Bs ${fm(med(Y.map(r=>r.ingreso_laboral)))}`],['Media de ingreso',`Bs ${fm(mean(Y.map(r=>r.ingreso_laboral)))}`]].map(([a,b])=>`<div class="kpi">${a}<b>${b}</b></div>`).join('');
+ /* 3 descriptivos */
+ const QV=['edad','anios_estudio','horas_trabajo_total','ingreso_laboral','ingreso_oc_principal'];
+ S('quant').innerHTML=table(['Variable','n','Media','Desv. est.','Mín','Q1','Mediana','Q3','Máx'],QV.map(k=>{const a=D.map(r=>r[k]).filter(num).sort((x,y)=>x-y);return[k,fm(a.length),fm(mean(a),1),fm(Math.sqrt(vari(a)),1),fm(a[0],1),fm(q(a,.25),1),fm(q(a,.5),1),fm(q(a,.75),1),fm(a[a.length-1],1)]}));
+ const ing=D.map(r=>r.ingreso_laboral).filter(num).sort((x,y)=>x-y);
+ S('qnote').innerHTML=`Interpretación: el ingreso laboral medio (Bs ${fm(mean(ing))}) ${mean(ing)>q(ing,.5)?'supera':'no supera'} a la mediana (Bs ${fm(q(ing,.5))}); la mitad de los ocupados gana menos de la mediana. La mayoría de los ocupados trabaja unas ${fm(med(D.map(r=>r.horas_trabajo_total).filter(num)))} horas por semana (mediana).`;
+ S('cat').innerHTML=['area','sexo','departamento','nivel_educativo','condicion_actividad','grupo_ocupacional','actividad','subocupacion','tipo_hogar'].map(k=>{const c=counts(D,k),n=Object.values(c).reduce((a,b)=>a+b,0),ks=Object.keys(c).sort((a,b)=>c[b]-c[a]);return `<details><summary><b>${k}</b> (${ks.length} categorías)</summary>${table(['Categoría','n','%'],ks.map(x=>[x,fm(c[x]),fm(100*c[x]/n,1)]))}</details>`}).join('');
+ const ch=chi(D,'area','sexo');
+ S('sexarea').innerHTML=table(['Área','% Hombre','% Mujer','n'],ch.A.map(a=>{const n=Object.values(ch.t[a]).reduce((x,y)=>x+y,0);return[a,fm(100*(ch.t[a].Hombre||0)/n,1),fm(100*(ch.t[a].Mujer||0)/n,1),fm(n)]}));
+ /* 4 distribuciones */
+ bar('g4','Área',D,'area');bar('g4','Sexo',D,'sexo');bar('g4','Departamento',D,'departamento');bar('g4','Nivel educativo',D,'nivel_educativo',NIV);
+ bar('g4','Grupo ocupacional (ocupados)',OC,'grupo_ocupacional');bar('g4','Actividad económica (ocupados)',OC,'actividad');bar('g4','Subocupación (ocupados)',OC,'subocupacion');bar('g4','Tipo de hogar',D,'tipo_hogar');
+ hist('g4','Años de estudio',D.map(r=>r.anios_estudio).filter(num),'años');hist('g4','Edad',D.map(r=>r.edad).filter(num),'años');
+ hist('g4','Horas de trabajo total (ocupados)',OC.map(r=>r.horas_trabajo_total).filter(num),'horas/semana');
+ hist('g4','Ingreso laboral (ocupados)',Y.map(r=>r.ingreso_laboral),'Bs/mes');hist('g4','Ingreso ocupación principal',Y.map(r=>r.ingreso_oc_principal).filter(num),'Bs/mes');
+ /* 5 ingreso por grupos */
+ [['area','Área'],['departamento','Departamento'],['nivel_educativo','Nivel educativo'],['sexo','Sexo']].forEach(([k,t])=>box('g5','Ingreso por '+t.toLowerCase()+' (escala log)',Y,k,'ingreso_laboral'));
+ mm('g5','Media y mediana por área',Y,'area','ingreso_laboral');mm('g5','Media y mediana por departamento',Y,'departamento','ingreso_laboral');
+ mm('g5','Media y mediana por nivel educativo',Y,'nivel_educativo','ingreso_laboral',NIV);mm('g5','Media y mediana por sexo',Y,'sexo','ingreso_laboral');
+ mm('g5','Ingreso por tramo de edad',Y,'tramo_edad','ingreso_laboral',TR);
+ const gA=groups(Y,'area','ingreso_laboral'),sx=['Hombre','Mujer'],ids=card('g5','Sexo por área (% apilado)',`En el área urbana las mujeres son ${fm(100*(ch.t.Urbana?.Mujer||0)/Object.values(ch.t.Urbana||{}).reduce((a,b)=>a+b,1),1)}% de la PET; en la rural, ${fm(100*(ch.t.Rural?.Mujer||0)/Object.values(ch.t.Rural||{}).reduce((a,b)=>a+b,1),1)}%.`);
+ P(ids,sx.map(s=>({type:'bar',name:s,x:ch.A,y:ch.A.map(a=>100*(ch.t[a][s]||0)/Object.values(ch.t[a]).reduce((x,y)=>x+y,0))})),{barmode:'stack',yaxis:{title:'%'}});
+ /* 6 relaciones */
+ dens('g6','Ingreso vs. años de estudio',Y,'anios_estudio','ingreso_laboral','Años de estudio');dens('g6','Ingreso vs. edad',Y,'edad','ingreso_laboral','Edad');dens('g6','Ingreso vs. horas de trabajo',Y,'horas_trabajo_total','ingreso_laboral','Horas/semana');
+ const CV=['edad','anios_estudio','horas_trabajo_total','ingreso_laboral','ingreso_oc_principal'],M=CV.map(a=>CV.map(b=>pearson(Y.map(r=>r[a]),Y.map(r=>r[b])).r));
+ const idc=card('g6','Matriz de correlaciones (ocupados con ingreso)','');P(idc,[{type:'heatmap',x:CV,y:CV,z:M,zmin:-1,zmax:1,colorscale:'RdBu',text:M.map(r=>r.map(v=>v.toFixed(2))),texttemplate:'%{text}'}],{margin:{t:10,l:120,r:10,b:110}});
+ const rEd=pearson(Y.map(r=>r.anios_estudio),Y.map(r=>r.ingreso_laboral)).r;
+ S('corrnote').innerHTML=`Interpretación: la relación entre años de estudio e ingreso es ${strength(rEd)} y ${rEd>0?'positiva':'negativa'} (r = ${fm(rEd,2)}); ${M[3][4]>.999?'<b>ingreso_laboral e ingreso_oc_principal son prácticamente idénticos en esta base</b> (r ≈ 1), por lo que son redundantes.':''}`;
+ /* 7 pruebas */
+ const T=S('tests'),h=Y.filter(r=>r.sexo==='Hombre').map(r=>r.ingreso_laboral),m=Y.filter(r=>r.sexo==='Mujer').map(r=>r.ingreso_laboral),w=welch(h,m);
+ T.innerHTML+=`<div class="test"><h4>Prueba t de Student (Welch): ingreso laboral, hombres vs. mujeres</h4>H₀: las medias son iguales.<br>Hombres: Bs ${fm(w.m1)} (n=${fm(h.length)}) · Mujeres: Bs ${fm(w.m2)} (n=${fm(m.length)}) · t = ${fm(w.t,2)}, gl = ${fm(w.df)}, p ${pf(w.p)}, d de Cohen = ${fm(w.d,2)}.<br><b>Interpretación:</b> la diferencia ${sig(w.p)}. El tamaño del efecto es ${eff(w.d)}: ${w.m1>w.m2?'los hombres ganan en promedio':'las mujeres ganan en promedio'} Bs ${fm(Math.abs(w.m1-w.m2))} más al mes.</div>`;
+ const c2=chi(D,'area','sexo'),c3=chi(D.filter(r=>r.nivel_educativo),'nivel_educativo','sexo');
+ T.innerHTML+=`<div class="test"><h4>Chi-cuadrado de independencia: área × sexo</h4>H₀: la composición por sexo es la misma en área urbana y rural.<br>χ² = ${fm(c2.c2,2)}, gl = ${c2.df}, p ${pf(c2.p)}, V de Cramér = ${fm(c2.V,3)}.<br><b>Interpretación:</b> la asociación ${sig(c2.p)}. V indica una asociación ${c2.V<.1?'muy débil':c2.V<.3?'débil':'moderada o fuerte'}.</div>
+ <div class="test"><h4>Chi-cuadrado de independencia: nivel educativo × sexo</h4>H₀: la distribución del nivel educativo es igual en hombres y mujeres.<br>χ² = ${fm(c3.c2,2)}, gl = ${c3.df}, p ${pf(c3.p)}, V = ${fm(c3.V,3)}.<br><b>Interpretación:</b> la asociación ${sig(c3.p)}; su intensidad es ${c3.V<.1?'muy débil':c3.V<.3?'débil':'moderada o fuerte'}.</div>`;
+ [['departamento','departamento'],['nivel_educativo','nivel educativo']].forEach(([k,t])=>{const a=anova(groups(Y,k,'ingreso_laboral'));T.innerHTML+=`<div class="test"><h4>ANOVA de un factor: ingreso laboral según ${t}</h4>H₀: el ingreso medio es igual en todos los grupos.<br>F(${a.d1}, ${fm(a.d2)}) = ${fm(a.F,2)}, p ${pf(a.p)}, η² = ${fm(a.eta,3)}.<br><b>Interpretación:</b> la diferencia entre grupos ${sig(a.p)}. El ${t} explica aproximadamente el ${fm(100*a.eta,1)}% de la variabilidad del ingreso (${a.eta<.06?'efecto pequeño':a.eta<.14?'efecto mediano':'efecto grande'}); el resto depende de otros factores.</div>`});
+ [['anios_estudio','años de estudio'],['edad','edad'],['horas_trabajo_total','horas trabajadas']].forEach(([k,t])=>{const c=pearson(Y.map(r=>r[k]),Y.map(r=>r.ingreso_laboral));T.innerHTML+=`<div class="test"><h4>Correlación de Pearson: ${t} e ingreso laboral</h4>H₀: no hay correlación lineal (ρ = 0).<br>r = ${fm(c.r,3)}, n = ${fm(c.n)}, p ${pf(c.p)}, r² = ${fm(c.r*c.r,3)}.<br><b>Interpretación:</b> la correlación ${sig(c.p)}; es ${strength(c.r)} y ${c.r>0?'positiva':'negativa'}. Los ${t} explican solo el ${fm(100*c.r*c.r,1)}% de la variación lineal del ingreso.</div>`});
+ S('rep').hidden=false;S('rep').scrollIntoView({behavior:'smooth'})}
+/* ---------- carga ---------- */
+function load(f){S('err').textContent='';if(!f)return;if(typeof Papa==='undefined'||typeof Plotly==='undefined'){S('err').textContent='No se cargó '+[typeof Papa==='undefined'?'PapaParse':'',typeof Plotly==='undefined'?'Plotly':''].filter(Boolean).join(' ni ')+'. Abre el HTML desde tu carpeta (no desde una vista previa) o descarga los .js junto al HTML (ver instrucciones).';return}
+ Papa.parse(f,{header:true,dynamicTyping:true,skipEmptyLines:true,complete:r=>{const miss=REQ.filter(c=>!(r.meta.fields||[]).includes(c));if(miss.length){S('err').textContent='Al CSV le faltan columnas: '+miss.join(', ');return}
+ try{build(r.data)}catch(e){S('err').textContent='Error al procesar: '+e.message}},error:e=>S('err').textContent=e.message})}
+const dz=S('drop');dz.onclick=()=>S('file').click();S('file').onchange=e=>load(e.target.files[0]);
+['dragenter','dragover'].forEach(t=>dz.addEventListener(t,e=>{e.preventDefault();dz.classList.add('over')}));
+['dragleave','drop'].forEach(t=>dz.addEventListener(t,e=>{e.preventDefault();dz.classList.remove('over')}));
+dz.addEventListener('drop',e=>load(e.dataTransfer.files[0]));
+</script></body></html>
